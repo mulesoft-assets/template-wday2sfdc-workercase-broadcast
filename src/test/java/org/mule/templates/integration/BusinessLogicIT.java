@@ -12,14 +12,11 @@ import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 import javax.xml.datatype.DatatypeConfigurationException;
-import javax.xml.datatype.DatatypeFactory;
-import javax.xml.datatype.XMLGregorianCalendar;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -115,7 +112,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		flow.initialise();
 		log.info("creating a workday employee...");
 		try {
-			flow.process(getTestEvent(prepareNewHire(), MessageExchangePattern.REQUEST_RESPONSE));						
+			flow.process(getTestEvent(prepareNewHire().get(0), MessageExchangePattern.REQUEST_RESPONSE));						
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -125,7 +122,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		EXT_ID = "Bruce_" + System.currentTimeMillis();
 		log.info("employee name: " + EXT_ID);
 		employee = new Employee(EXT_ID, "Willis1", EMAIL, "650-232-2323", "999 Main St", "San Francisco", "CA", "94105", "US", "o7aHYfwG", 
-				"2014-04-17-07:00", "2014-04-21-07:00", "QA Engineer", "San_Francisco_site", "Regular", "Full Time", "Salary", "USD", "140000", "Annual", "39905", "21440", EXT_ID);
+				new Date(), new Date(), "QA Engineer", "San_Francisco_site", "Regular", "Full Time", "Salary", "USD", "140000", "Annual", "39905", "21440", EXT_ID);
 		List<Object> list = new ArrayList<Object>();
 		list.add(employee);
 		return list;
@@ -207,7 +204,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		TerminateEventDataType event = new TerminateEventDataType();
 		java.util.Calendar cal = java.util.Calendar.getInstance();
 		cal.add(java.util.Calendar.DATE, 1);
-		eeData.setTerminationDate(xmlDate(cal.getTime()));
+		eeData.setTerminationDate(cal);
 		EventClassificationSubcategoryObjectType prim = new EventClassificationSubcategoryObjectType();
 		List<EventClassificationSubcategoryObjectIDType> list = new ArrayList<EventClassificationSubcategoryObjectIDType>();
 		EventClassificationSubcategoryObjectIDType id = new EventClassificationSubcategoryObjectIDType();
@@ -219,12 +216,4 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		eeData.setTerminateEventData(event );
 		return req;		
 	}
-	
-	private static XMLGregorianCalendar xmlDate(Date date) throws DatatypeConfigurationException {
-		GregorianCalendar gregorianCalendar = (GregorianCalendar) GregorianCalendar.getInstance();
-		gregorianCalendar.setTime(date);
-		return DatatypeFactory.newInstance().newXMLGregorianCalendar(gregorianCalendar);
-	}
-	
-	
 }
