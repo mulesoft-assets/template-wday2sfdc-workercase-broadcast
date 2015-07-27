@@ -24,7 +24,7 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
     <batch:job name="businessLogicBatch">
         <batch:threading-profile poolExhaustedAction="WAIT"/>
         <batch:process-records>
-            <batch:step name="Find_Organization_Name">
+            <batch:step name="findOrganizationName">
                 <enricher source="payload" target="recordVars.organizationName" doc:name="Store in 'recordVars.organizationName'">
                     <set-payload value="#[payload.orgIds.isEmpty() ? null : payload.orgIds[0].name]" doc:name="Extract organization name from payload"/>
 
@@ -34,18 +34,18 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
 
         
             </batch:step>
-            <batch:step name="Get_Case_If_Exists" accept-expression="#[payload.ExtId__c != null]">
+            <batch:step name="getCaseIfExists" accept-expression="#[payload.ExtId__c != null]">
                 <enricher source="payload == null ? null : payload.Id" target="payload.Id" doc:name="Enrich payload with existing SFDC Case Id">
                     <sfdc:query-single config-ref="Salesforce" query="SELECT Id FROM Case WHERE ExtId__c = '#[payload.ExtId__c]' and ExtId__c != null" doc:name="Query Salesforce Case"/>
                 </enricher>
             </batch:step>
-            <batch:step name="Get_Account_Id">
+            <batch:step name="getAccountId">
                 <flow-ref name="findOrCreateAccountFlow" doc:name="Execute findOrCreateAccountFlow"/>
             </batch:step>
-            <batch:step name="Get_Contact_Id">
+            <batch:step name="getContactId">
                 <flow-ref name="findOrCreateContactFlow" doc:name="Execute findOrCreateContactFlow"/>
             </batch:step>
-            <batch:step name="Upsert_Case_To_Salesforce">
+            <batch:step name="upsertCaseToSalesforce">
 
                 <batch:commit size="200" doc:name="Batch Commit">
                     <dw:transform-message doc:name="Prepare for upsert">
