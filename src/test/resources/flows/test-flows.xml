@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" version="EE-3.7.0"
+<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" version="EE-3.7.1"
 	xmlns:json="http://www.mulesoft.org/schema/mule/json" 
 	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" 
 	xmlns:wd-hr="http://www.mulesoft.org/schema/mule/wd-hr" 
@@ -47,7 +47,6 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
         <wd-hr:get-employee config-ref="WorkdayHumanResource" doc:name="Workday Human Resource"/>
         <dw:transform-message doc:name="Transform EmployeeType to TerminateEmployeeRequestType">
             <dw:set-payload><![CDATA[%dw 1.0
-%input payload application/java
 %output application/java
 %var response = payload as :object { class: "com.workday.hr.EmployeeType" }
 ---
@@ -67,7 +66,6 @@ unless (response.employeeData is :null) otherwise []
 ]]></dw:set-payload>
         </dw:transform-message>
        
-<!--         <data-mapper:transform doc:name="EmployeeType To TerminateEmployeeRequestType" config-ref="EmployeeType_To_TerminateEmployeeRequestType"/> -->
 	</sub-flow>
     
     <sub-flow name="terminateWorkdayEmployee" >

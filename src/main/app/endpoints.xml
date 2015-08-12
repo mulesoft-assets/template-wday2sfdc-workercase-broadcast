@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:json="http://www.mulesoft.org/schema/mule/json" version="EE-3.7.0"
+<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:json="http://www.mulesoft.org/schema/mule/json" version="EE-3.7.1"
 	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
 	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
 	xmlns:wd-hr="http://www.mulesoft.org/schema/mule/wd-hr"
@@ -67,7 +67,6 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
 
         <dw:transform-message doc:name="Transform Workers to Cases">
             <dw:set-payload><![CDATA[%dw 1.0
-%input payload application/java
 %output application/java
 %var response = payload as :object { class: "com.workday.hr.GetWorkersResponseType" }
 ---
