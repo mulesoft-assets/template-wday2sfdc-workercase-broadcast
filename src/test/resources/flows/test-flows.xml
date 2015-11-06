@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" version="EE-3.7.1"
+<mule xmlns:cluster="http://www.mulesoft.org/schema/mule/ee/cluster" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" 
 	xmlns:json="http://www.mulesoft.org/schema/mule/json" 
 	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" 
 	xmlns:wd-hr="http://www.mulesoft.org/schema/mule/wd-hr" 
@@ -16,21 +16,34 @@ http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfd
 http://www.mulesoft.org/schema/mule/wd-staffing http://www.mulesoft.org/schema/mule/wd-staffing/current/mule-wd-staffing.xsd
 http://www.mulesoft.org/schema/mule/wd-hr http://www.mulesoft.org/schema/mule/wd-hr/current/mule-wd-hr.xsd
 http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
-http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
     <wd-staffing:config name="Workday_Staffing" staffingUser="${wday.user}" staffingPassword="${wday.password}" staffingEndpoint="${wday.endpoint}" doc:name="Workday Staffing">
         <wd-staffing:connection-pooling-profile initialisationPolicy="INITIALISE_ONE" exhaustedAction="WHEN_EXHAUSTED_GROW"/>
     </wd-staffing:config>
+<configuration doc:name="Configuration">
+     <expression-language>
+         <global-functions>
+             def generateUniqueIdFromName(name) {
+                 return name + System.currentTimeMillis()
+             }
+         </global-functions>
+     </expression-language>
+   </configuration>
     
     <sub-flow name="retrieveCaseSFDC" >
         <sfdc:query config-ref="Salesforce" query="dsql:SELECT Id,Subject,SuppliedEmail,AccountId,ContactId FROM Case WHERE ExtId__c = '#[payload]'" doc:name="Salesforce"/>
     </sub-flow>
     <sub-flow name="hireEmployee" >
+        <set-variable variableName="uniqueId" value="#[generateUniqueIdFromName(&quot;Bruce_&quot;)]" doc:name="Set uniqueId"/>
 
         <dw:transform-message doc:name="Transform Employee to Hire Employee Request Type">
             <dw:set-payload resource="classpath:TransformEmployeetoHireEmployeeRequestType.dwl"></dw:set-payload>
         </dw:transform-message>
 
+
         <wd-staffing:hire-employee config-ref="Workday_Staffing" doc:name="Workday Staffing"/>
+        <set-payload value="#[flowVars.uniqueId]" doc:name="Set Payload"/>
 
                     
     </sub-flow>

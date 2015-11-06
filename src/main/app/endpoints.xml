@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:json="http://www.mulesoft.org/schema/mule/json" version="EE-3.7.1"
+<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:json="http://www.mulesoft.org/schema/mule/json" 
 	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
 	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
 	xmlns:wd-hr="http://www.mulesoft.org/schema/mule/wd-hr"
@@ -27,7 +27,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
 			startDelay="${poll.startDelayMillis}" />
 			<watermark variable="lastQueryDate" default-expression="${watermark.default.expression}" update-expression="#[flowVars.updatedThrough]"/>
 			<processor-chain doc:name="query Workers">
-			<logger message="Fetching Workday updates...#[groovy: new Date().format('yyyy-MM-dd HH:mm:ss')]" level="INFO" doc:name="Log 'Fetching workday updates...'"/>
+			<logger message="Fetching Workday updates...#[flowVars.lastQueryDate.getTime()]" level="INFO" doc:name="Log 'Fetching workday updates...'"/>
                 <dw:transform-message doc:name="Create Get Workers Request">
                     <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
@@ -41,7 +41,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
 			{
 				transactionDateRangeData: {
 					updatedFrom		: flowVars.lastQueryDate,
-					updatedThrough	: now - |PT1S|
+					updatedThrough	: now - |PT6S|
 				}
 			}
 		]

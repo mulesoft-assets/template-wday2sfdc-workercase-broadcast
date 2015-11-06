@@ -30,7 +30,6 @@ import org.mule.api.MuleException;
 import org.mule.context.notification.NotificationException;
 import org.mule.processor.chain.SubflowInterceptingChainLifecycleWrapper;
 import org.mule.streaming.ConsumerIterator;
-import org.mule.templates.utils.Employee;
 
 import com.mulesoft.module.batch.BatchTestHelper;
 import com.workday.hr.EmployeeGetType;
@@ -53,21 +52,19 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 	private static final long TIMEOUT_MILLIS = 30000;
 	private static final long DELAY_MILLIS = 500;
 	private static final String PATH_TO_TEST_PROPERTIES = "./src/test/resources/mule.test.properties";
-	private static final Logger log = LogManager.getLogger(BusinessLogicIT.class);
+	private static final Logger LOGGER = LogManager.getLogger(BusinessLogicIT.class);
 	
 	protected static final int TIMEOUT_SEC = 60;
 	private BatchTestHelper helper;
 	
-    private String EXT_ID, EMAIL = "bwillis@gmailtest.com";
-	private String SFDC_ID, ACCOUNT_ID, CONTACT_ID;
-	private Employee employee;
-	private String TERMINATION_ID;
+    private String extId, familyName, email, terminationId;
+	private String sfdcId, accountId, contactId;
     
     @BeforeClass
     public static void beforeTestClass() {
         System.setProperty("poll.startDelayMillis", "8000");
         System.setProperty("poll.frequencyMillis", "30000");
-        Date initialDate = new Date(System.currentTimeMillis() - 1000 * 60 * 3);
+        Date initialDate = new Date(System.currentTimeMillis() - 1000 * 60);
         Calendar cal = Calendar.getInstance();
         cal.setTime(initialDate);
         System.setProperty(
@@ -87,9 +84,11 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
     	try {
     		props.load(new FileInputStream(PATH_TO_TEST_PROPERTIES));
     	} catch (Exception e) {
-    	   log.error("Error occured while reading mule.test.properties", e);
+    	   LOGGER.error("Error occured while reading mule.test.properties", e);
     	} 
-    	TERMINATION_ID = props.getProperty("wday.termination.id");
+    	terminationId = props.getProperty("test.wday.termination.id");
+    	familyName = props.getProperty("test.wday.family.name");
+    	email = props.getProperty("test.wday.email");
     	
     	helper = new BatchTestHelper(muleContext);
 		stopFlowSchedulers(POLL_FLOW_NAME);
@@ -110,28 +109,19 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 	private void createTestDataInSandBox() throws MuleException, Exception {
 		SubflowInterceptingChainLifecycleWrapper flow = getSubFlow("hireEmployee");
 		flow.initialise();
-		log.info("creating a workday employee...");
+		LOGGER.info("Creating a workday employee...");
 		try {
-			flow.process(getTestEvent(prepareNewHire().get(0), MessageExchangePattern.REQUEST_RESPONSE));						
+			MuleEvent event = flow.process(getTestEvent(MessageExchangePattern.REQUEST_RESPONSE));
+			extId = event.getMessage().getPayloadAsString();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-    
-    private List<Object> prepareNewHire(){
-		EXT_ID = "Bruce_" + System.currentTimeMillis();
-		log.info("employee name: " + EXT_ID);
-		employee = new Employee(EXT_ID, "Willis1", EMAIL, "650-232-2323", "999 Main St", "San Francisco", "CA", "94105", "US", "o7aHYfwG", 
-				new Date(), new Date(), "QA Engineer", "San_Francisco_site", "Regular", "Full Time", "Salary", "USD", "140000", "Annual", "39905", "21440", EXT_ID);
-		List<Object> list = new ArrayList<Object>();
-		list.add(employee);
-		return list;
-	}
-    
+        
     @SuppressWarnings("unchecked")
 	@Test
     public void testMainFlow() throws Exception {
-		Thread.sleep(20000);
+		Thread.sleep(10000);
 		runSchedulersOnce(POLL_FLOW_NAME);
 		waitForPollToRun();
 		helper.awaitJobTermination(TIMEOUT_MILLIS, DELAY_MILLIS);
@@ -141,7 +131,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		flow.initialise();
 		MuleEvent response = flow.process(getTestEvent(getEmployee(), MessageExchangePattern.REQUEST_RESPONSE));			
 		EmployeeType workerRes = (EmployeeType) response.getMessage().getPayload();
-		log.info("worker id:" + workerRes.getEmployeeData().get(0).getEmployeeID());
+		LOGGER.info("Worker id:" + workerRes.getEmployeeData().get(0).getEmployeeID());
 		
     	flow = getSubFlow("retrieveCaseSFDC");
     	flow.initialise();
@@ -150,24 +140,24 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 				MessageExchangePattern.REQUEST_RESPONSE)).
 										getMessage().getPayload();
 		Map<String, Object> caseMap = iterator.next();
-		SFDC_ID = caseMap.get("Id").toString();
-		ACCOUNT_ID = caseMap.get("AccountId").toString();
-		CONTACT_ID = caseMap.get("ContactId").toString();
-		assertEquals("Subject should be synced", employee.getGivenName() + " " + employee.getFamilyName() + " Case", 
+		sfdcId = caseMap.get("Id").toString();
+		accountId = caseMap.get("AccountId").toString();
+		contactId = caseMap.get("ContactId").toString();
+		assertEquals("Subject should be synced", extId + " " + familyName + " Case", 
 													caseMap.get("Subject"));
-		assertEquals("Email should be synced", EMAIL, caseMap.get("SuppliedEmail"));
+		assertEquals("Email should be synced", email, caseMap.get("SuppliedEmail"));
     }
     
     private void deleteTestDataFromSandBox() throws MuleException, Exception {
 		// Delete the created users in SFDC
-    	log.info("deleting test data...");
+    	LOGGER.info("Deleting test data...");
 		SubflowInterceptingChainLifecycleWrapper deleteFlow = getSubFlow("deleteSFDC");
 		deleteFlow.initialise();
 
 		List<String> idList = new ArrayList<String>();
-		idList.add(SFDC_ID);
-		idList.add(ACCOUNT_ID);
-		idList.add(CONTACT_ID);
+		idList.add(sfdcId);
+		idList.add(accountId);
+		idList.add(contactId);
 		deleteFlow.process(getTestEvent(idList,
 				MessageExchangePattern.REQUEST_RESPONSE));
 		// Delete the created users in Workday
@@ -192,7 +182,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		IDType idType = new IDType();
 		value.setID(idType);
 		idType.setSystemID("Salesforce - Chatter");
-		idType.setValue(EXT_ID);			
+		idType.setValue(extId);			
 		empRef.setIntegrationIDReference(value);
 		get.setEmployeeReference(empRef);		
 		return get;
@@ -209,7 +199,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		List<EventClassificationSubcategoryObjectIDType> list = new ArrayList<EventClassificationSubcategoryObjectIDType>();
 		EventClassificationSubcategoryObjectIDType id = new EventClassificationSubcategoryObjectIDType();
 		id.setType("WID");
-		id.setValue(TERMINATION_ID);
+		id.setValue(terminationId);
 		list.add(id);
 		prim.setID(list);
 		event.setPrimaryReasonReference(prim);

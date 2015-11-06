@@ -1,29 +1,8 @@
 %dw 1.0
-%input payload application/java
 %output application/java
-%var employee = payload as :object {class: "com.mule.templates.utils.Employee"}
 
-%function countryMapping(inputCountry) {
-	workdayCountry: 'USA' when inputCountry == 'US' otherwise null
-} unless inputCountry is :null otherwise workdayCountry: null
-
-%function stateMapping(inputState) {
-	workdayState: 'USA-CA' when inputState == 'CA' otherwise null
-} unless inputState is :null otherwise workdayState: null
-
-%function locationMapping(inputLocation) {
-	workdayLocation: 'San_Francisco_site' when inputLocation == 'San_Francisco_site' otherwise null
-} unless inputLocation is :null otherwise workdayLocation: null
-
-%function posTimeTypeMapping(inputPosTimeType) {
-	(workdayPosTimeType: 'Full_Time') when inputPosTimeType == 'Full Time',
-	(workdayPosTimeType: 'Part_Time') when inputPosTimeType == 'Part Time'
-} unless inputPosTimeType is :null otherwise workdayPosTimeType: null
-
-%function payPlanMapping(payRateType) {
-	(workdayPayPlan: 'SALARY_Salary_Plan') when payRateType == 'Salary',
-	(workdayPayPlan: 'SALARY_Hourly_Plan') when payRateType == 'Hourly'
-} unless payRateType is :null otherwise workdayPayPlan: null
+%var idValue = flowVars.uniqueId
+//generateUniqueIdFromName("Bruce_")
 --- 
 {
 	version: 'v20',
@@ -35,7 +14,7 @@
 			externalIntegrationIDData: {
 				ID: [{
 					systemID	: 'Jobvite',
-				    value		: employee.id
+				    value		: idValue
 				    }]
 			},
 			personalData: {
@@ -43,24 +22,24 @@
 					addressData: [{
 						addressLineData: [{
 							type	: 'ADDRESS_LINE_1',
-							value	: employee.addr1
+							value	: "999 Main St"
 
 						}],
 						countryReference: {
 							ID: [{
 								type	: 'ISO_3166-1_Alpha-3_Code',
-								value	: countryMapping(employee.country).workdayCountry
+								value	: "USA"
 							}]
 						},
 						countryRegionReference: {
 							ID: [{
 								type	: 'Country_Region_ID',
-								value	: stateMapping(employee.state).workdayState
+								value	: "USA-CA"
 							}]
 						},
-						effectiveDate	: employee.hireDate as :date,
-						municipality 	: employee.city,
-						postalCode 		: employee.zip,
+						effectiveDate	: now,
+						municipality 	: "San Francisco",
+						postalCode 		: "94105",
 						usageData: [{
 							typeData:[{
 								primary : true,
@@ -74,7 +53,7 @@
 						}]
 					}],
 					emailAddressData 	: [{
-						emailAddress	: employee.email,
+						emailAddress	: p('test.wday.email'),
 						usageData: [{
 							public: true,
 							typeData: [{
@@ -96,7 +75,7 @@
 								value	: '1063.5'
 							}]
 						},
-						phoneNumber		: employee.phone,
+						phoneNumber		: "650-232-2323",
 						usageData: [{
 							public: true,
 							typeData: [{
@@ -117,21 +96,21 @@
 							countryReference: {
 								ID: [{
 									type	: 'ISO_3166-1_Alpha-3_Code',
-									value	: countryMapping(employee.country).workdayCountry
+									value	: "USA"
 								}]
 							},
-							firstName	: employee.givenName,
-							lastName	: employee.familyName
+							firstName	: idValue,
+							lastName	: p('test.wday.family.name')
 						}
 					}
 				}
 			}
 		},	
-			hireDate: employee.hireDate as :date,
+			hireDate: now,
 			hireEmployeeEventData: {
 				employeeExternalIDData: {
 					externalID: [{
-						externalID: employee.id,
+						externalID: idValue,
 						systemID: 'Salesforce - Chatter'
 					}]
 				},
@@ -141,7 +120,7 @@
 			            value: 'Regular'
 			        }]
 			    },
-			    firstDayOfWork: employee.startDate as :date,
+			    firstDayOfWork: now,
 			    hireReasonReference: {
 			    	ID: [{
 			    		type	: 'General_Event_Subcategory_ID',
@@ -149,31 +128,31 @@
 			    	}]
 			    },
 			    positionDetails: {
-			    	positionTitle: employee.title,
+			    	positionTitle: "QA Engineer",
 			    	defaultHours: 40,
 			    	scheduledHours: 40,
 			    	jobProfileReference: {
 			    		ID: [{
 			    			type: 'Job_Profile_ID',
-			    			value: employee.jobProfile
+			    			value: "39905"
 			    		}]
 			    	},
 			    	locationReference: {
 			    		ID: [{
 			    			type: 'Location_ID',
-			    			value: locationMapping(employee.location).workdayLocation
+			    			value: "San_Francisco_site"
 			    		}]
 			    	},
 			    	payRateTypeReference : {
 			    		ID : [{
 			    			type: 'Pay_Rate_Type_ID',
-			    			value: employee.payRateType
+			    			value: "Salary"
 			    		}]
 			    	},
 			    	positionTimeTypeReference : {
 			    		ID : [{
 			    			type: 'Position_Time_Type_ID',
-			    			value: posTimeTypeMapping(employee.timeType).workdayPosTimeType
+			    			value: "Full_Time"
 			    		}]
 			    	}
 			    }
@@ -205,29 +184,29 @@
 					},
 				payPlanData: {
 					payPlanSubData: [{
-						amount: employee.basePay,
+						amount: "140000",
 						currencyReference : {
 							ID : [{
 								type: 'Currency_ID',
-								value: employee.basePayCurrency
+								value: "USD"
 							}]
 						},
 						frequencyReference : {
 							ID: [{
 								type : 'Frequency_ID',
-								value : employee.basePayFreq
+								value : "Annual"
 							}]
 						},
 						payPlanReference : {
 							ID : [{
 								type : 'Compensation_Plan_ID',
-								value: payPlanMapping(employee.payRateType).workdayPayPlan
+								value: "SALARY_Salary_Plan"
 							}]
 						}
 					}],
 					'replace' : false
 				},
-				primaryCompensationBasis : employee.basePay
+				primaryCompensationBasis : "140000"
 				}
 			}
 		}
