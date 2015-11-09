@@ -8,7 +8,7 @@
 	xmlns="http://www.mulesoft.org/schema/mule/core"
     xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
     xmlns:spring="http://www.springframework.org/schema/beans"
-    version="EE-3.7.1"
+    
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
@@ -49,10 +49,11 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
                         <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
 ---
-payload map $ 
-- 'orgIds' 
-- 'LastModifiedDate' 
-++ 'Description' : p('sfdc.description')]]></dw:set-payload>
+payload map {
+	($ - 'orgIds' 
+	  - 'LastModifiedDate' 
+	  + 'Description' : p('sfdc.description'))
+}]]></dw:set-payload>
                     </dw:transform-message>
                     <logger message="Cases to be upserted: #[payload]" level="INFO" doc:name="Log cases to be  upserted"/>
                     <sfdc:upsert config-ref="Salesforce" externalIdFieldName="Id" type="Case" doc:name="Upsert Case">
