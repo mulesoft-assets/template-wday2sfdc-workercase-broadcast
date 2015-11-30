@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.mule.templates</groupId>
 		<artifactId>templates-tooling-parent-pom</artifactId>
-		<version>1.2.3</version>
+		<version>1.2.7</version>
 	</parent>
 
 	<artifactId>template-wday2sfdc-workercase-broadcast</artifactId>
@@ -16,7 +16,9 @@
 
 	<properties>
 		<wday.common.version>5.0.0</wday.common.version>
-	</properties>
+	<munit.version>1.0.0</munit.version>
+    <mule.munit.support.version>3.7.0</mule.munit.support.version>
+    </properties>
 
 	<build>
 		<plugins>
@@ -49,8 +51,30 @@
 					</inclusions>
 				</configuration>
 			</plugin>
-		</plugins>
-	</build>
+		<plugin>
+                <groupId>com.mulesoft.munit.tools</groupId>
+                <artifactId>munit-maven-plugin</artifactId>
+                <version>${munit.version}</version>
+                <executions>
+                    <execution>
+                        <id>test</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+	<testResources>
+            <testResource>
+                <directory>src/test/munit</directory>
+            </testResource>
+        <testResource>
+                <directory>src/test/resources</directory>
+            </testResource>
+        </testResources>
+    </build>
 
 	<dependencies>
 		<dependency>
@@ -108,7 +132,19 @@
 			<artifactId>mule-module-extensions-spring-support</artifactId>
 			<version>${mule.version}</version>
 		</dependency>
-	</dependencies>
+	<dependency>
+            <groupId>com.mulesoft.munit</groupId>
+            <artifactId>mule-munit-support</artifactId>
+            <version>${mule.munit.support.version}</version>
+            <scope>test</scope>
+        </dependency>
+    <dependency>
+            <groupId>com.mulesoft.munit</groupId>
+            <artifactId>munit-runner</artifactId>
+            <version>${munit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
 	<repositories>
 		<repository>
