@@ -1,0 +1,11 @@
+{
+    "inputMessageMetadata": {},
+    "outputMessageMetadata": {
+        "messagePayload": {
+            "connectorName": "#_custom_mule_metadata_type_#",
+            "typeId": "SalesforceCases"
+        }
+    },
+    "id": "98722246-ee30-408e-bcd4-f43ad66d9cb8",
+    "version": "5.2.0.0"
+}
