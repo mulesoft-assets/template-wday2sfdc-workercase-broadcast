@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:cluster="http://www.mulesoft.org/schema/mule/ee/cluster" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" 
-	xmlns:json="http://www.mulesoft.org/schema/mule/json" 
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:wd-connector="http://www.mulesoft.org/schema/mule/wd-connector" xmlns:cluster="http://www.mulesoft.org/schema/mule/ee/cluster" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" 
 	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" 
-	xmlns:wd-hr="http://www.mulesoft.org/schema/mule/wd-hr" 
-	xmlns:wd-staffing="http://www.mulesoft.org/schema/mule/wd-staffing" 
 	xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" 
 	xmlns="http://www.mulesoft.org/schema/mule/core" 
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
@@ -13,14 +10,10 @@
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd
-http://www.mulesoft.org/schema/mule/wd-staffing http://www.mulesoft.org/schema/mule/wd-staffing/current/mule-wd-staffing.xsd
-http://www.mulesoft.org/schema/mule/wd-hr http://www.mulesoft.org/schema/mule/wd-hr/current/mule-wd-hr.xsd
 http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
-http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
-    <wd-staffing:config name="Workday_Staffing" staffingUser="${wday.user}" staffingPassword="${wday.password}" staffingEndpoint="${wday.endpoint}" doc:name="Workday Staffing">
-        <wd-staffing:connection-pooling-profile initialisationPolicy="INITIALISE_ONE" exhaustedAction="WHEN_EXHAUSTED_GROW"/>
-    </wd-staffing:config>
+http://www.mulesoft.org/schema/mule/wd-connector http://www.mulesoft.org/schema/mule/wd-connector/current/mule-wd-connector.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+
 <configuration doc:name="Configuration">
      <expression-language>
          <global-functions>
@@ -34,55 +27,73 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
     <sub-flow name="retrieveCaseSFDC" >
         <sfdc:query config-ref="Salesforce" query="dsql:SELECT Id,Subject,SuppliedEmail,AccountId,ContactId FROM Case WHERE ExtId__c = '#[payload]'" doc:name="Salesforce"/>
     </sub-flow>
-    <sub-flow name="hireEmployee" >
+    <flow name="hireEmployee">
         <set-variable variableName="uniqueId" value="#[generateUniqueIdFromName(&quot;Bruce_&quot;)]" doc:name="Set uniqueId"/>
-
-        <dw:transform-message doc:name="Transform Employee to Hire Employee Request Type">
-            <dw:set-payload resource="classpath:TransformEmployeetoHireEmployeeRequestType.dwl"></dw:set-payload>
+        <dw:transform-message doc:name="Create HireEmployee Request">
+            <dw:set-payload resource="classpath:HireEmployeeRequest.dwl"></dw:set-payload>
         </dw:transform-message>
-
-
-        <wd-staffing:hire-employee config-ref="Workday_Staffing" doc:name="Workday Staffing"/>
+        <wd-connector:invoke config-ref="Workday__Basic" type="Staffing||Hire_Employee" doc:name="Workday"/>
         <set-payload value="#[flowVars.uniqueId]" doc:name="Set Payload"/>
-
-                    
-    </sub-flow>
+    </flow>
     <sub-flow name="deleteSFDC" >
         <sfdc:delete config-ref="Salesforce" doc:name="Salesforce">
             <sfdc:ids ref="#[payload]"/>
         </sfdc:delete>
     </sub-flow>
     <sub-flow name="getWorkdayEmployee" >
-        <wd-hr:get-employee config-ref="WorkdayHumanResource" doc:name="Workday Human Resource"/>
-    </sub-flow>
-    
-    <sub-flow name="getWorkdaytoTerminateFlow" >
-        <wd-hr:get-employee config-ref="WorkdayHumanResource" doc:name="Workday Human Resource"/>
-        <dw:transform-message doc:name="Transform EmployeeType to TerminateEmployeeRequestType">
+        <dw:transform-message doc:name="Create GetEmployee Request">
             <dw:set-payload><![CDATA[%dw 1.0
-%output application/java
-%var response = payload as :object { class: "com.workday.hr.EmployeeType" }
+%output application/xml
+%namespace ns0 urn:com.workday/bsvc
 ---
 {
-	version					: response.version,
-	terminateEmployeeData 	: {
-		employeeReference	: {
-			descriptor		: response.employeeReference.integrationIDReference.descriptor,
-			ID				: response.employeeData map {
-				type		: "Employee_ID",
-				value		: $.employeeID
+	ns0#Employee_Get: {
+		ns0#Employee_Reference: {
+			ns0#Integration_ID_Reference: {
+				ns0#ID @(ns0#System_ID: payload.systemId): payload.value
 			}
 		}
 	}
-} as :object {class: "com.workday.staffing.TerminateEmployeeRequestType"}
-unless (response.employeeData is :null) otherwise []
-]]></dw:set-payload>
+}]]></dw:set-payload>
         </dw:transform-message>
-       
-	</sub-flow>
+        <wd-connector:invoke config-ref="Workday__Basic" type="Human_Resources||Get_Employee" doc:name="Workday"/>
+        <dw:transform-message metadata:id="0fae10b5-064b-40e7-a850-8e2f915e62fe" doc:name="Get Employee ID">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+%namespace ns0 urn:com.workday/bsvc
+---
+{
+
+	EmployeeId: payload.ns0#Employee.ns0#Employee_Data.ns0#Employee_ID
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </sub-flow>
+
     
     <sub-flow name="terminateWorkdayEmployee" >
-    	<wd-staffing:terminate-employee config-ref="Workday_Staffing" doc:name="Workday Staffing" />
+        <dw:transform-message doc:name="Create TerminateEmployee Request">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/xml
+%namespace ns0 urn:com.workday/bsvc
+---
+{
+	ns0#Terminate_Employee_Request: {
+		ns0#Terminate_Employee_Data: {
+			ns0#Employee_Reference: {
+				ns0#ID @(ns0#type: payload.EmployeeRefType): payload.EmployeeId
+			},
+			ns0#Termination_Date: payload.TerminationDate,
+			ns0#Terminate_Event_Data: {
+				ns0#Primary_Reason_Reference: {
+					ns0#ID @(ns0#type: payload.PrimaryReasonRefType): payload.PrimaryReasonRefValue
+				}
+			}
+		}
+	}
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <wd-connector:invoke config-ref="Workday__Basic" type="Staffing||Terminate_Employee" doc:name="Workday"/>
+
     </sub-flow>
     
 </mule>
