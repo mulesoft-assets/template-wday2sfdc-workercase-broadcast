@@ -6,19 +6,13 @@
 	<parent>
 		<groupId>org.mule.templates</groupId>
 		<artifactId>templates-tooling-parent-pom</artifactId>
-		<version>1.2.7</version>
+		<version>1.2.8</version>
 	</parent>
 
 	<artifactId>template-wday2sfdc-workercase-broadcast</artifactId>
 	<packaging>mule</packaging>
 	<version>1.2.3-SNAPSHOT</version>
 	<name>template-wday2sfdc-workercase-broadcast Anypoint Template Project</name>
-
-	<properties>
-		<wday.common.version>5.0.0</wday.common.version>
-	<munit.version>1.0.0</munit.version>
-    <mule.munit.support.version>3.7.0</mule.munit.support.version>
-    </properties>
 
 	<build>
 		<plugins>
@@ -34,46 +28,20 @@
 						</inclusion>
 						<inclusion>
 							<groupId>org.mule.modules</groupId>
-							<artifactId>mule-module-workday-humanresources</artifactId>
-						</inclusion>
-						<inclusion>
-							<groupId>org.mule.modules</groupId>
-							<artifactId>mule-module-workday-common</artifactId>
-						</inclusion>
-						<inclusion>
-							<groupId>org.mule.modules</groupId>
 							<artifactId>mule-module-extensions-support</artifactId>
 						</inclusion>
 						<inclusion>
 							<groupId>org.mule.modules</groupId>
 							<artifactId>mule-module-extensions-spring-support</artifactId>
 						</inclusion>
-					</inclusions>
+						<inclusion>
+                            <groupId>org.mule.modules</groupId>
+                            <artifactId>workday-connector</artifactId>
+                        </inclusion>
+                    </inclusions>
 				</configuration>
 			</plugin>
-		<plugin>
-                <groupId>com.mulesoft.munit.tools</groupId>
-                <artifactId>munit-maven-plugin</artifactId>
-                <version>${munit.version}</version>
-                <executions>
-                    <execution>
-                        <id>test</id>
-                        <phase>test</phase>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
-	<testResources>
-            <testResource>
-                <directory>src/test/munit</directory>
-            </testResource>
-        <testResource>
-                <directory>src/test/resources</directory>
-            </testResource>
-        </testResources>
     </build>
 
 	<dependencies>
@@ -101,22 +69,6 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.mule.modules</groupId>
-			<artifactId>mule-module-workday-humanresources</artifactId>
-			<version>${wday.hr.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mule.modules</groupId>
-			<artifactId>mule-module-workday-common</artifactId>
-			<version>${wday.common.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mule.modules</groupId>
-			<artifactId>mule-module-workday-staffing</artifactId>
-			<version>${wday.hr.version}</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
 			<groupId>com.mulesoft.weave</groupId>
 			<artifactId>mule-plugin-weave_2.11</artifactId>
 			<version>${mule.version}</version>
@@ -132,18 +84,17 @@
 			<artifactId>mule-module-extensions-spring-support</artifactId>
 			<version>${mule.version}</version>
 		</dependency>
-	<dependency>
-            <groupId>com.mulesoft.munit</groupId>
-            <artifactId>mule-munit-support</artifactId>
-            <version>${mule.munit.support.version}</version>
-            <scope>test</scope>
+    	<dependency>
+            <groupId>org.mule.modules</groupId>
+            <artifactId>workday-connector</artifactId>
+            <version>${wday.version}</version>
         </dependency>
-    <dependency>
-            <groupId>com.mulesoft.munit</groupId>
-            <artifactId>munit-runner</artifactId>
-            <version>${munit.version}</version>
-            <scope>test</scope>
-        </dependency>
+        <dependency>
+			<groupId>org.mule.modules</groupId>
+			<artifactId>mule-module-ws</artifactId>
+			<version>${mule.version}</version>
+			<scope>provided</scope>
+		</dependency>
     </dependencies>
 
 	<repositories>

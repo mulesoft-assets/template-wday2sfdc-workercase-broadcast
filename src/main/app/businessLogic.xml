@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" 
+<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" 
 	xmlns:json="http://www.mulesoft.org/schema/mule/json" 
 	xmlns:batch="http://www.mulesoft.org/schema/mule/batch" 
 	xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" 
@@ -8,7 +8,6 @@
 	xmlns="http://www.mulesoft.org/schema/mule/core"
     xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
     xmlns:spring="http://www.springframework.org/schema/beans"
-    
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
@@ -23,24 +22,57 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
         <batch:threading-profile poolExhaustedAction="WAIT"/>
         <batch:process-records>
             <batch:step name="findOrganizationName">
-                <enricher source="payload" target="recordVars.organizationName" doc:name="Store in 'recordVars.organizationName'">
+                <enricher source="#[payload]" target="#[payload.OrganizationName]" doc:name="Store in 'recordVars.organizationName'">
                     <set-payload value="#[payload.orgIds.isEmpty() ? null : payload.orgIds[0].name]" doc:name="Extract organization name from payload"/>
-
-
                 </enricher>
-
-        
             </batch:step>
             <batch:step name="getCaseIfExists" accept-expression="#[payload.ExtId__c != null]">
                 <enricher source="payload == null ? null : payload.Id" target="payload.Id" doc:name="Enrich payload with existing SFDC Case Id">
                     <sfdc:query-single config-ref="Salesforce" query="SELECT Id FROM Case WHERE ExtId__c = '#[payload.ExtId__c]' and ExtId__c != null" doc:name="Query Salesforce Case"/>
                 </enricher>
             </batch:step>
-            <batch:step name="getAccountId">
-                <flow-ref name="findOrCreateAccountFlow" doc:name="Execute findOrCreateAccountFlow"/>
+            <batch:step name="findOrCreateAccountFlow" accept-expression="payload.OrganizationName != null">
+                <enricher source="#[payload == null ? null : payload.Id]" target="#[payload.AccountId]" doc:name="enrich payload with existing Account ID">
+                    <sfdc:query-single config-ref="Salesforce" query="SELECT Id FROM Account WHERE Name = '#[payload.OrganizationName]'" doc:name="Query Account in  Salesforce Instance"/>
+                </enricher>
+                <choice doc:name="Does the corresponding account need to be created?">
+                    <when expression="#[payload.AccountId == null]">
+                        <enricher source="#[payload[0].getId()]" target="#[payload.AccountId]" doc:name="enrich payload with newly created Account ID">
+                            <sfdc:create config-ref="Salesforce" type="Account" doc:name="Create Account in Salesforce Instance">
+                                <sfdc:objects>
+                                    <sfdc:object>
+                                        <sfdc:inner-object key="Name">#[payload.OrganizationName]</sfdc:inner-object>
+                                    </sfdc:object>
+                                </sfdc:objects>
+                            </sfdc:create>
+                        </enricher>
+                    </when>
+                    <otherwise>
+                        <logger message="Existing Account Id already set" level="INFO" doc:name="Existing Account Id already set"/>
+                    </otherwise>
+                </choice>
             </batch:step>
-            <batch:step name="getContactId">
-                <flow-ref name="findOrCreateContactFlow" doc:name="Execute findOrCreateContactFlow"/>
+            <batch:step name="findOrCreateContactFlow" accept-expression="payload.SuppliedEmail != null">
+                <enricher source="#[payload == null ? null : payload.Id]" target="#[payload.ContactId]" doc:name="enrich payload with existing Contact ID">
+                    <sfdc:query-single config-ref="Salesforce" query="SELECT Id FROM Contact WHERE Email = '#[payload.SuppliedEmail]'" doc:name="Query Contact in Salesforce Instance"/>
+                </enricher>
+                <choice doc:name="Does the corresponding contact need to be created?">
+                    <when expression="#[payload.ContactId == null]">
+                        <enricher source="#[payload[0].getId()]" target="#[payload.ContactId]" doc:name="Enrich payload with newly created Contact ID">
+                            <sfdc:create config-ref="Salesforce" type="Contact" doc:name="Create Contact in Salesforce Instance">
+                                <sfdc:objects>
+                                    <sfdc:object>
+                                        <sfdc:inner-object key="Email">#[payload.SuppliedEmail]</sfdc:inner-object>
+                                        <sfdc:inner-object key="LastName">#[payload.SuppliedName]</sfdc:inner-object>
+                                    </sfdc:object>
+                                </sfdc:objects>
+                            </sfdc:create>
+                        </enricher>
+                    </when>
+                    <otherwise>
+                        <logger message="Existing Contact Id already set" level="INFO" doc:name="Existing Contact Id already set"/>
+                    </otherwise>
+                </choice>
             </batch:step>
             <batch:step name="upsertCaseToSalesforce">
 
@@ -51,8 +83,9 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
 ---
 payload map {
 	($ - 'orgIds' 
-	  - 'LastModifiedDate' 
-	  + 'Description' : p('sfdc.description'))
+	  - 'LastModifiedDate'
+	  - 'OrganizationName'
+	  + 'Description': p('sfdc.description'))
 }]]></dw:set-payload>
                     </dw:transform-message>
                     <logger message="Cases to be upserted: #[payload]" level="INFO" doc:name="Log cases to be  upserted"/>
@@ -68,64 +101,5 @@ payload map {
             <logger message="Batch completed: #[payload]" level="INFO" doc:name="Log the batch results"/>
         </batch:on-complete>
     </batch:job>
-
-	<sub-flow name="findOrCreateAccountFlow" >
-        <choice doc:name="Is organization name available in the input?">
-            <when expression="#[recordVars.organizationName != null]">
-                <enricher source="#[payload]" target="#[recordVars.account]" doc:name="store in 'recordVars.account'">
-                    <sfdc:query-single config-ref="Salesforce" query="SELECT Id, Name FROM Account WHERE Name = '#[recordVars.organizationName]'" doc:name="Query Account in  Salesforce Instance"/>
-                </enricher>
-                <choice doc:name="Does the corresponding account need to be created?">
-                    <when expression="#[recordVars.account == null]">
-                        <enricher source="#[payload[0].getId()]" target="#[payload.AccountId]" doc:name="enrich payload with newly created Account ID">
-                            <sfdc:create config-ref="Salesforce" type="Account" doc:name="Create Account in Salesforce Instance">
-                                <sfdc:objects>
-                                    <sfdc:object>
-                                        <sfdc:inner-object key="Name">#[recordVars.organizationName]</sfdc:inner-object>
-                                        <sfdc:inner-object key="NumberOfEmployees">0</sfdc:inner-object>
-                                    </sfdc:object>
-                                </sfdc:objects>
-                            </sfdc:create>
-                        </enricher>
-
-                    </when>
-                    <otherwise>
-                        <enricher target="#[payload.AccountId]" doc:name="enrich payload with existing Account ID">
-                            <set-payload value="#[recordVars.account.Id]" doc:name="Get existing Account ID"/>
-
-                        </enricher>
-                    </otherwise>
-                </choice>
-
-            </when>
-            <otherwise>
-                <logger message="There is no organization for this worker. Doing nothing." level="INFO" doc:name="Nothing to do here"/>
-            </otherwise>
-        </choice>
-    </sub-flow>
-    <sub-flow name="findOrCreateContactFlow">
-        <enricher source="#[payload]" target="#[recordVars.contact]" doc:name="store in 'recordVars.contact'">
-            <sfdc:query-single config-ref="Salesforce" query="SELECT Id, Name FROM Contact WHERE Email = '#[payload.SuppliedEmail]'" doc:name="Query Contact in Salesforce Instance"/>
-        </enricher>
-        <choice doc:name="Does the corresponding contact need to be created?">
-            <when expression="#[recordVars.contact == null]">
-                <enricher target="#[payload.ContactId]"	doc:name="Enrich payload with newly created Contact ID" source="#[payload[0].getId()]">
-					<sfdc:create config-ref="Salesforce" type="Contact" doc:name="Create Contact in Salesforce Instance">
-						<sfdc:objects>
-							<sfdc:object>
-								<sfdc:inner-object key="Email">payload.SuppliedEmail</sfdc:inner-object>
-								<sfdc:inner-object key="LastName">payload.SuppliedName</sfdc:inner-object>
-							</sfdc:object>
-						</sfdc:objects>
-					</sfdc:create>
-				</enricher>
-            </when>
-            <otherwise>
-                <enricher target="#[payload.ContactId]" doc:name="enrich payload with existing Contact ID">
-                    <set-payload value="#[recordVars.contact.Id]" doc:name="Get existing Contact ID"/>
-                </enricher>
-            </otherwise>
-        </choice>
-    </sub-flow>
     
 </mule>

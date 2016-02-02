@@ -135,13 +135,14 @@ In order to use this Mule Anypoint Template you need to configure properties (Cr
 + poll.frequencyMillis `10000`
 + poll.startDelayMillis `500`
 + poll.offset `3000`
-+ watermark.default.expression `#[groovy: new GregorianCalendar(2015, Calendar.MAY, 22, 13, 00, 00)]`
++ watermark.default.expression `#[groovy: new GregorianCalendar(2016, Calendar.JANUARY, 28, 13, 00, 00)]`
 
 #### Workday Connector configuration
 
-+ wday.user `admin@workday`
-+ wday.password `secret`
-+ wday.endpoint `https://impl-cc.workday.com/ccx/service/workday/Human_Resources/v21.1`
++ wday.user `joan`
++ wday.tenant `acme_pt1`
++ wday.password `joanPass123`
++ wday.hostname `your_impl-cc.workday.com`
 
 #### Salesforce Connector
 

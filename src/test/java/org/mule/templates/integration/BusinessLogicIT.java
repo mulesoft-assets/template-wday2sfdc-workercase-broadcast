@@ -12,6 +12,7 @@ import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -27,21 +28,12 @@ import org.junit.Test;
 import org.mule.MessageExchangePattern;
 import org.mule.api.MuleEvent;
 import org.mule.api.MuleException;
+import org.mule.construct.Flow;
 import org.mule.context.notification.NotificationException;
 import org.mule.processor.chain.SubflowInterceptingChainLifecycleWrapper;
 import org.mule.streaming.ConsumerIterator;
 
 import com.mulesoft.module.batch.BatchTestHelper;
-import com.workday.hr.EmployeeGetType;
-import com.workday.hr.EmployeeReferenceType;
-import com.workday.hr.EmployeeType;
-import com.workday.hr.ExternalIntegrationIDReferenceDataType;
-import com.workday.hr.IDType;
-import com.workday.staffing.EventClassificationSubcategoryObjectIDType;
-import com.workday.staffing.EventClassificationSubcategoryObjectType;
-import com.workday.staffing.TerminateEmployeeDataType;
-import com.workday.staffing.TerminateEmployeeRequestType;
-import com.workday.staffing.TerminateEventDataType;
 
 /**
  * The objective of this class is to validate the correct behavior of the flows
@@ -107,8 +99,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 	}
     
 	private void createTestDataInSandBox() throws MuleException, Exception {
-		SubflowInterceptingChainLifecycleWrapper flow = getSubFlow("hireEmployee");
-		flow.initialise();
+		Flow flow = getFlow("hireEmployee");
 		LOGGER.info("Creating a workday employee...");
 		try {
 			MuleEvent event = flow.process(getTestEvent(MessageExchangePattern.REQUEST_RESPONSE));
@@ -130,13 +121,13 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
     	SubflowInterceptingChainLifecycleWrapper flow = getSubFlow("getWorkdayEmployee");
 		flow.initialise();
 		MuleEvent response = flow.process(getTestEvent(getEmployee(), MessageExchangePattern.REQUEST_RESPONSE));			
-		EmployeeType workerRes = (EmployeeType) response.getMessage().getPayload();
-		LOGGER.info("Worker id:" + workerRes.getEmployeeData().get(0).getEmployeeID());
+		Map<String, String> workerRes = (Map<String, String>) response.getMessage().getPayload();
+		LOGGER.info("Worker id:" + workerRes.get("EmployeeId"));
 		
     	flow = getSubFlow("retrieveCaseSFDC");
     	flow.initialise();
 		
-		ConsumerIterator<Map<String, Object>> iterator = (ConsumerIterator<Map<String, Object>>) flow.process(getTestEvent(workerRes.getEmployeeData().get(0).getEmployeeID(), 
+		ConsumerIterator<Map<String, Object>> iterator = (ConsumerIterator<Map<String, Object>>) flow.process(getTestEvent(workerRes.get("EmployeeId"), 
 				MessageExchangePattern.REQUEST_RESPONSE)).
 										getMessage().getPayload();
 		Map<String, Object> caseMap = iterator.next();
@@ -161,49 +152,39 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
 		deleteFlow.process(getTestEvent(idList,
 				MessageExchangePattern.REQUEST_RESPONSE));
 		// Delete the created users in Workday
-		SubflowInterceptingChainLifecycleWrapper flow = getSubFlow("getWorkdaytoTerminateFlow");
+		SubflowInterceptingChainLifecycleWrapper flow = getSubFlow("getWorkdayEmployee");
 		flow.initialise();
 		
 		try {
-			MuleEvent response = flow.process(getTestEvent(getEmployee(), MessageExchangePattern.REQUEST_RESPONSE));			
+			MuleEvent response = flow.process(getTestEvent(getEmployee(), MessageExchangePattern.REQUEST_RESPONSE));
+			Map<String, String> workerRes = (Map<String, String>) response.getMessage().getPayload();
 			flow = getSubFlow("terminateWorkdayEmployee");
 			flow.initialise();
-			flow.process(getTestEvent(prepareTerminate(response), MessageExchangePattern.REQUEST_RESPONSE));								
+			flow.process(getTestEvent(prepareTerminate(workerRes), MessageExchangePattern.REQUEST_RESPONSE));								
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 
 	}
     
-    private EmployeeGetType getEmployee(){
-		EmployeeGetType get = new EmployeeGetType();
-		EmployeeReferenceType empRef = new EmployeeReferenceType();					
-		ExternalIntegrationIDReferenceDataType value = new ExternalIntegrationIDReferenceDataType();
-		IDType idType = new IDType();
-		value.setID(idType);
-		idType.setSystemID("Salesforce - Chatter");
-		idType.setValue(extId);			
-		empRef.setIntegrationIDReference(value);
-		get.setEmployeeReference(empRef);		
-		return get;
+    private Map<String, String> getEmployee(){
+		Map<String, String> wdayEmployee = new HashMap<String, String>();
+		wdayEmployee.put("systemId", "Salesforce - Chatter");
+		wdayEmployee.put("value", extId);
+		return wdayEmployee;
 	}
 	
-	private TerminateEmployeeRequestType prepareTerminate(MuleEvent response) throws DatatypeConfigurationException{
-		TerminateEmployeeRequestType req = (TerminateEmployeeRequestType) response.getMessage().getPayload();
-		TerminateEmployeeDataType eeData = req.getTerminateEmployeeData();		
-		TerminateEventDataType event = new TerminateEventDataType();
+	private Map<String, Object> prepareTerminate(Map<String, String> workerRes) throws DatatypeConfigurationException{		
 		java.util.Calendar cal = java.util.Calendar.getInstance();
 		cal.add(java.util.Calendar.DATE, 1);
-		eeData.setTerminationDate(cal);
-		EventClassificationSubcategoryObjectType prim = new EventClassificationSubcategoryObjectType();
-		List<EventClassificationSubcategoryObjectIDType> list = new ArrayList<EventClassificationSubcategoryObjectIDType>();
-		EventClassificationSubcategoryObjectIDType id = new EventClassificationSubcategoryObjectIDType();
-		id.setType("WID");
-		id.setValue(terminationId);
-		list.add(id);
-		prim.setID(list);
-		event.setPrimaryReasonReference(prim);
-		eeData.setTerminateEventData(event );
-		return req;		
+		
+		Map<String, Object> terminateEmployee = new HashMap<String, Object>();
+		terminateEmployee.put("TerminationDate", cal);
+		terminateEmployee.put("PrimaryReasonRefType", "WID");
+		terminateEmployee.put("PrimaryReasonRefValue", terminationId);
+		terminateEmployee.put("EmployeeRefType", "Employee_ID");
+		terminateEmployee.put("EmployeeId", workerRes.get("EmployeeId"));
+		
+		return terminateEmployee;
 	}
 }

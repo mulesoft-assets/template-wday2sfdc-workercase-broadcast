@@ -1,94 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:json="http://www.mulesoft.org/schema/mule/json" 
+<mule xmlns:wd-connector="http://www.mulesoft.org/schema/mule/wd-connector" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:json="http://www.mulesoft.org/schema/mule/json" 
 	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
 	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
-	xmlns:wd-hr="http://www.mulesoft.org/schema/mule/wd-hr"
 	xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"
-	xmlns:batch="http://www.mulesoft.org/schema/mule/batch" 
-	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
 	xmlns="http://www.mulesoft.org/schema/mule/core" 
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:spring="http://www.springframework.org/schema/beans" 
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
 http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
-http://www.mulesoft.org/schema/mule/wd-hr http://www.mulesoft.org/schema/mule/wd-hr/current/mule-wd-hr.xsd
 http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
 http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
-http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/wd-connector http://www.mulesoft.org/schema/mule/wd-connector/current/mule-wd-connector.xsd">
 
-
-	<flow name="triggerFlow" processingStrategy="synchronous"  >	
+	<flow name="triggerFlow" processingStrategy="synchronous" initialState="started">	
 		<poll doc:name="fireup Worker synchronization">
 		<fixed-frequency-scheduler frequency="${poll.frequencyMillis}"
 			startDelay="${poll.startDelayMillis}" />
-			<watermark variable="lastQueryDate" default-expression="${watermark.default.expression}" update-expression="#[flowVars.updatedThrough]"/>
+			<watermark variable="lastQueryDate" default-expression="${watermark.default.expression}"/>
 			<processor-chain doc:name="query Workers">
-			<logger message="Fetching Workday updates...#[flowVars.lastQueryDate.getTime()]" level="INFO" doc:name="Log 'Fetching workday updates...'"/>
-                <dw:transform-message doc:name="Create Get Workers Request">
+			<logger message="Fetching Workday updates..." level="INFO" doc:name="Log 'Fetching workday updates...'"/>
+                <dw:transform-message doc:name="Create GetWorkers Request">
                     <dw:set-payload><![CDATA[%dw 1.0
-%output application/java
+%output application/xml
+%namespace ns0 urn:com.workday/bsvc
 ---
 {
-	requestCriteria: {
-		excludeInactiveWorkers		: true,
-		excludeContingentWorkers	: false,
-		excludeEmployees			: false,
-		transactionLogCriteriaData: [
-			{
-				transactionDateRangeData: {
-					updatedFrom		: flowVars.lastQueryDate,
-					updatedThrough	: now - |PT6S|
+	ns0#Get_Workers_Request: {
+		ns0#Request_Criteria: {
+			ns0#Transaction_Log_Criteria_Data: {
+				ns0#Transaction_Date_Range_Data: {
+					ns0#Updated_From: flowVars.lastQueryDate,
+					ns0#Updated_Through: now - |PT6S|
 				}
-			}
-		]
-	},
-	
-	responseGroup: {
-		includeRoles				: true,
-		includePersonalInformation	: true,
-		includeOrganizations		: true, 
-		includeEmploymentInformation: true,
-		includeReference			: true
+			},
+			ns0#Exclude_Inactive_Workers: true,
+			ns0#Exclude_Employees: false,
+			ns0#Exclude_Contingent_Workers: false
+		},
+		ns0#Response_Group: {
+			ns0#Include_Reference: true,
+			ns0#Include_Personal_Information: true,
+			ns0#Include_Employment_Information: true,
+			ns0#Include_Organizations: true,
+			ns0#Include_Roles: true
+		}
 	}
-
-} as :object {class: "com.workday.hr.GetWorkersRequestType"}
-]]></dw:set-payload>
+}]]></dw:set-payload>
+                </dw:transform-message>
+                <wd-connector:invoke config-ref="Workday__Basic" type="Human_Resources||Get_Workers" doc:name="Workday"/>
+                <dw:transform-message metadata:id="98722246-ee30-408e-bcd4-f43ad66d9cb8" doc:name="Transform Workers to Cases">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+%namespace ns0 urn:com.workday/bsvc
+---
+payload.ns0#Get_Workers_Response.ns0#Response_Data.*ns0#Worker map ((worker , indexOfWorker) -> {
+	SuppliedName: worker.ns0#Worker_Data.ns0#Personal_Data.ns0#Name_Data.ns0#Legal_Name_Data.ns0#Name_Detail_Data.ns0#Last_Name ++
+		(worker.ns0#Worker_Data.ns0#Personal_Data.ns0#Contact_Data.ns0#Email_Address_Data.ns0#Email_Address default ""),
+	SuppliedEmail: worker.ns0#Worker_Data.ns0#Personal_Data.ns0#Contact_Data.ns0#Email_Address_Data.ns0#Email_Address,
+	Status: "Working",
+	Origin: "Web",
+	Subject: worker.ns0#Worker_Data.ns0#Personal_Data.ns0#Name_Data.ns0#Legal_Name_Data.ns0#Name_Detail_Data.ns0#First_Name ++ " " ++
+		worker.ns0#Worker_Data.ns0#Personal_Data.ns0#Name_Data.ns0#Legal_Name_Data.ns0#Name_Detail_Data.ns0#Last_Name ++ " Case",
+	ExtId__c: worker.ns0#Worker_Reference[1],
+	orgIds: worker.ns0#Worker_Data.ns0#Organization_Data.*ns0#Worker_Organization_Data map ((workerOrganizationDatum , indexOfWorkerOrganizationDatum) -> {
+		id: workerOrganizationDatum.ns0#Organization_Data.ns0#Organization_Reference_ID,
+		name: workerOrganizationDatum.ns0#Organization_Data.ns0#Organization_Name,
+		type: workerOrganizationDatum.ns0#Organization_Data.ns0#Organization_Type_Reference.@ns0#Descriptor
+	}) filter $.type == "Supervisory"
+}) unless (payload.ns0#Get_Workers_Response.ns0#Response_Data is :null) otherwise []]]></dw:set-payload>
+                    <dw:set-variable variableName="lastQueryDate"><![CDATA[%dw 1.0
+%output application/java
+%namespace ns0 urn:com.workday/bsvc
+---
+payload.ns0#Get_Workers_Response.ns0#Request_Criteria.ns0#Transaction_Log_Criteria_Data.ns0#Transaction_Date_Range_Data.ns0#Updated_Through]]></dw:set-variable>
                 </dw:transform-message>
 
-			<wd-hr:get-workers config-ref="WorkdayHumanResource" doc:name="Get Workers from Workday Human Resource">
-			</wd-hr:get-workers>
 			</processor-chain>
 		</poll>
-        <set-variable variableName="updatedThrough" value="#[payload.getRequestCriteria().getTransactionLogCriteriaData().get(0).getTransactionDateRangeData().getUpdatedThrough()]" doc:name="Set updatedThrough"/>
 
-        <dw:transform-message doc:name="Transform Workers to Cases">
-            <dw:set-payload><![CDATA[%dw 1.0
-%output application/java
-%var response = payload as :object { class: "com.workday.hr.GetWorkersResponseType" }
----
-response.responseData.worker map {
-	SuppliedName	: $.workerData.personalData.nameData.legalNameData.nameDetailData.lastName ++ 
-					  $.workerData.personalData.contactData.emailAddressData[0].emailAddress,
-	SuppliedEmail	: $.workerData.personalData.contactData.emailAddressData[0].emailAddress,
-	Status			: 'Working',
-	Origin			: 'Web',
-	Subject			: $.workerData.personalData.nameData.legalNameData.nameDetailData.firstName ++ ' ' ++ 
-	                  $.workerData.personalData.nameData.legalNameData.nameDetailData.lastName  ++ ' Case',
-	ExtId__c		: $.workerReference.ID[1].value,
-	
-	orgIds 			: $.workerData.organizationData.workerOrganizationData map {
-		id			: $.organizationData.organizationReferenceID,
-		name		: $.organizationData.organizationName,
-		type		: $.organizationData.organizationTypeReference.descriptor
-	} filter $.type == 'Supervisory'
-} unless (response.responseData is :null) otherwise []
-
-]]></dw:set-payload>
-        </dw:transform-message>
 
         <expression-filter expression="#[payload.size() &gt; 0]" doc:name="Filter empty result set"/>
 
