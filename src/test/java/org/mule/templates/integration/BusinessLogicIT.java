@@ -55,7 +55,7 @@ public class BusinessLogicIT extends AbstractTemplateTestCase {
     @BeforeClass
     public static void beforeTestClass() {
         System.setProperty("poll.startDelayMillis", "8000");
-        System.setProperty("poll.frequencyMillis", "30000");
+        System.setProperty("poll.frequencyMillis", "240000");
         Date initialDate = new Date(System.currentTimeMillis() - 1000 * 60);
         Calendar cal = Calendar.getInstance();
         cal.setTime(initialDate);
