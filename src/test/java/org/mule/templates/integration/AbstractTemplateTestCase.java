@@ -32,7 +32,7 @@ public class AbstractTemplateTestCase extends FunctionalTestCase {
 	private static final String MULE_DEPLOY_PROPERTIES_PATH = "./src/main/app/mule-deploy.properties";
 	protected static final String POLL_FLOW_NAME = "triggerFlow";
 
-	protected final Prober pollProber = new PollingProber(240000, 60000l);
+	protected final Prober pollProber = new PollingProber(600000, 60000l);
 	protected final PipelineSynchronizeListener pipelineListener = new PipelineSynchronizeListener(POLL_FLOW_NAME);
 
 	@Rule
