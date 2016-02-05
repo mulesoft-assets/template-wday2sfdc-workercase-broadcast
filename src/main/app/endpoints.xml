@@ -45,9 +45,7 @@ http://www.mulesoft.org/schema/mule/wd-connector http://www.mulesoft.org/schema/
 		ns0#Response_Group: {
 			ns0#Include_Reference: true,
 			ns0#Include_Personal_Information: true,
-			ns0#Include_Employment_Information: true,
-			ns0#Include_Organizations: true,
-			ns0#Include_Roles: true
+			ns0#Include_Organizations: true
 		}
 	}
 }]]></dw:set-payload>
