@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:workday="http://www.mulesoft.org/schema/mule/workday" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/workday http://www.mulesoft.org/schema/mule/workday/current/mule-workday.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+
+	<flow name="businessLogicFlow" doc:id="884f86c5-66e1-4701-bb9b-594c2a60abf3">
+
+		<batch:job jobName="migrateObjectsBatch" doc:id="79b373e6-1aeb-43a9-9dfe-8ac0d2f31fdc">
+			<batch:process-records>
+				<batch:step name="findOrganizationNameStep" doc:id="e5a548bd-08b7-478c-84cc-0bc281fffafe">
+					<ee:transform doc:name="Push Organization name to payload"
+						doc:id="7bc92972-a93d-4c4f-8298-ce5d69ad7cf0">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+ns ns0 urn:com.workday/bsvc
+---
+payload ++ {
+    OrganizationName: payload.orgIds[0].name
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</batch:step>
+				<batch:step name="getCaseStep" doc:id="a94a3c67-7da5-45e8-be2c-8cce151e2191"
+					acceptExpression="#[payload.ExtId__c != null]">
+					<salesforce:query-single doc:name="Query Case from SFDC"
+						doc:id="d2fb32b2-a2f7-40db-8d04-fc3cac6bb4cb" config-ref="Salesforce_Config"
+						target="caseInSFDC">
+						<salesforce:salesforce-query>SELECT Id FROM Case WHERE ExtId__c =
+							':id' and ExtId__c != null</salesforce:salesforce-query>
+						<salesforce:parameters><![CDATA[#[output applicaton/java
+---
+{
+	"id" : payload.ExtId__c
+}]]]></salesforce:parameters>
+					</salesforce:query-single>
+					<ee:transform doc:name="Push Case Id to payload"
+						doc:id="0d5ca1ed-733b-45a4-9dc8-6443262f768f">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload ++ {
+	(Id: vars.caseInSFDC.Id) if (vars.caseInSFDC.Id != null)
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</batch:step>
+				<batch:step name="findOrCreateAccountFlow" doc:id="3641fc07-9b1f-47f7-9a51-db9a1541fe98"
+					acceptExpression="#[payload.OrganizationName != null]">
+					<salesforce:query-single doc:name="Query Account from SFDC"
+						doc:id="fa64a36e-ae2f-43f3-bd61-6f6cfdf0adc7" config-ref="Salesforce_Config"
+						target="accountInSFDC">
+						<salesforce:salesforce-query>SELECT Id FROM Account WHERE Name =
+							':name'</salesforce:salesforce-query>
+						<salesforce:parameters><![CDATA[#[output applicaton/java
+---
+{
+	"name" : payload.OrganizationName
+}]]]></salesforce:parameters>
+					</salesforce:query-single>
+					<ee:transform doc:name="Push Account Id to payload"
+						doc:id="e46118ca-3932-4c69-b822-73d93b76d236">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload ++ {
+	(AccountId: vars.accountInSFDC.Id) if (vars.accountInSFDC.Id != null)
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<choice doc:name="Does the corresponding account need to be created?"
+						doc:id="8535a898-c8ff-4825-bc02-9e9c493372f8">
+						<when expression="#[payload.AccountId == null]">
+							<salesforce:create type="Account"
+								doc:name="Create Account in SFDC" doc:id="2a221724-918f-4076-b712-67ca341793e4"
+								config-ref="Salesforce_Config" target="newAccountInSFDC">
+								<salesforce:records><![CDATA[#[[{Name: payload.OrganizationName}]]]]></salesforce:records>
+							</salesforce:create>
+							<ee:transform doc:name="Push Account Id to payload"
+								doc:id="6629b083-4771-4dd2-9a65-8cabc80c3513">
+								<ee:message>
+									<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload ++ {
+	(AccountId: vars.newAccountInSFDC[0].Id) if (vars.newAccountInSFDC[0].Id != null)
+}]]></ee:set-payload>
+								</ee:message>
+							</ee:transform>
+						</when>
+						<otherwise>
+							<logger level="INFO" doc:name="Existing Account Id already set"
+								doc:id="bd383983-7c40-45da-ac53-eb93cfd44087" message="Existing Account Id already set" />
+						</otherwise>
+					</choice>
+				</batch:step>
+				<batch:step name="findOrCreateContactFlow" doc:id="2364beba-1c64-4b5b-9c32-5d7d69709707"
+					acceptExpression="#[payload.SuppliedEmail != null]">
+					<salesforce:query-single doc:name="Query Contact from SFDC"
+						doc:id="ba332fd9-2f49-48ec-9f5e-67e08be0896e" config-ref="Salesforce_Config"
+						target="contactInSFDC">
+						<salesforce:salesforce-query>SELECT Id FROM Contact WHERE Email =
+							':email'</salesforce:salesforce-query>
+						<salesforce:parameters><![CDATA[#[output applicaton/java
+---
+{
+	"email" : payload.SuppliedEmail
+}]]]></salesforce:parameters>
+					</salesforce:query-single>
+					<ee:transform doc:name="Push Contact Id to payload"
+						doc:id="18c91402-c8b3-4417-8671-ff62ad765641">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload ++ {
+	(ContactId: vars.contactInSFDC.Id) if (vars.contactInSFDC.Id != null)
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<choice doc:name="Does the corresponding contact need to be created?"
+						doc:id="31e1c62c-3f5f-4b5b-9ff1-7ff97ff45f57">
+						<when expression="#[payload.ContactId == null]">
+							<salesforce:create type="Contact"
+								doc:name="Create Contact in SFDC" doc:id="d03bcafc-5151-423e-824f-5f7575670858"
+								config-ref="Salesforce_Config" target="newContactInSFDC">
+								<salesforce:records><![CDATA[#[[{
+	Email: payload.SuppliedEmail,
+	Name: payload.SuppliedName
+}]]]]></salesforce:records>
+							</salesforce:create>
+							<ee:transform doc:name="Push Contact Id to payload"
+								doc:id="f24488e6-f32c-4f61-af70-e4fcccf799e3">
+								<ee:message>
+									<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload ++ {
+	(ContactId: vars.newContactInSFDC[0].Id) if (vars.newContactInSFDC[0].Id != null)
+}]]></ee:set-payload>
+								</ee:message>
+							</ee:transform>
+						</when>
+						<otherwise>
+							<logger level="INFO" doc:name="Existing Contact Id already set"
+								doc:id="e529ed4e-1000-4b4e-bf13-ddfb0d22c775" message="Existing Contact Id already set" />
+						</otherwise>
+					</choice>
+				</batch:step>
+				<batch:step name="upsertCaseStep" doc:id="fae38c6c-06b3-4e5a-b491-9171fe79b155">
+					<batch:aggregator doc:name="Batch Aggregator"
+						doc:id="45911e0f-40d2-49e4-af89-bf8b2b1e40ea" size="${page.size}">
+						<ee:transform doc:name="Prepare Records for upsert"
+							doc:id="12ee8493-1851-4450-8330-83d224bb6747">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload map {
+	(
+		$ 
+		- 'orgIds' 
+	  	- 'LastModifiedDate'
+	  	- 'OrganizationName'
+	  	++ 'Description': p('sfdc.description')
+	)
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<salesforce:upsert doc:name="Upsert Cases"
+							doc:id="9d808f39-567a-4391-8d8b-3a72fdaf30ed" config-ref="Salesforce_Config"
+							externalIdFieldName="Id" type="Case" />
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete>
+				<ee:transform doc:name="Prepare migration result"
+					doc:id="c84b4bc4-5a65-41c1-9d0c-f1ebd3d8db7a">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output text/plain
+---
+"Migration Report: \n"
+
+++ "\n Time [milliseconds]: " 		++ payload.elapsedTimeInMillis
+++ "\n Total Records: "				++ payload.totalRecords
+++ "\n Successful Records: "		++ payload.successfulRecords
+++ "\n Failed Records: "			++ payload.failedRecords
+++ "\n Loaded Records: "			++ payload.loadedRecords
+++ "\n Processed Records: " 		++ payload.processedRecords]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Migration process has finished!"
+					doc:id="b7575d38-7dbd-4602-9186-1bbb25234896" message="Migration process has finished: #[payload]" />
+
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+	<flow name="mainFlow" doc:id="7c0a5bef-b3d5-442f-bff3-10d038f69a5e">
+		<flow-ref doc:name="businessLogicFlow" doc:id="91360ede-4d71-44c7-9b64-8ee762e04ea0"
+			name="businessLogicFlow" />
+		<error-handler>
+			<on-error-propagate enableNotifications="true"
+				logException="true" doc:name="On Error Propagate" doc:id="488b507d-e26c-4c56-8759-8bb4f6645d71"
+				type="ANY">
+				<flow-ref doc:name="errorHandlingFlow" doc:id="afdaf73c-0137-4d60-84f6-5c41234771a3"
+					name="errorHandlingFlow" />
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>
+
+
+        
