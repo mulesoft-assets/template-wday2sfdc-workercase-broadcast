@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:workday="http://www.mulesoft.org/schema/mule/workday"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd 
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/workday http://www.mulesoft.org/schema/mule/workday/current/mule-workday.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<munit:config name="test-suite.xml" />
+	<configuration-properties doc:name="Configuration properties" doc:id="73eb7f68-ae5b-4537-827c-d69d8f3043c9" file="mule.test.properties" />
+	
+	<munit:before-test name="test-suiteBefore_Test" description="Before tests actions" doc:id="e2d9ab55-3e70-474c-8e29-bb0ce5748d7f">
+		<ee:transform doc:name="Prepare dynamic testing testCase variable" doc:id="f3608439-5a25-476b-9c2a-730884facf28">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="testCase" ><![CDATA[%dw 2.0
+output application/java
+var id = randomInt(100000) as String
+---
+{
+	"SuppliedName": "testCase" ++ id ,
+	"SuppliedEmail": "testCase" ++ id ++ "@test.com",
+	"Status": "Working",
+	"Origin": "Web",
+	"Subject": "MunitTest",
+	"ExtId__c": "12345",
+	"Description": "MUnit description"
+}
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+				<salesforce:create doc:name="Create Case in instance Salesforce"
+			doc:id="c9aa6b60-89fb-4d58-9826-f57c58e6f8c5" config-ref="Salesforce_Config"
+			type="Case">
+			<salesforce:records><![CDATA[#[[vars.testCase]]]]></salesforce:records>
+		</salesforce:create>
+		<set-variable value="#[payload.id]"
+			doc:name="Store ID to variable sfdcID" doc:id="44b4c3c6-88e9-4383-94be-a11fcf2dcac3" variableName="salesforceSourceID"/>
+	</munit:before-test>		
+		
+	
+	<munit:test name="test-suiteTest" description="MUnit Test" doc:id="d9b99079-7d37-49e0-ab3e-0da59aa105db" >
+		<munit:execution>
+			<flow-ref doc:name="queryFlow" doc:id="1fceb54d-2470-4678-8209-b2f04d106d46" name="queryFlow" />
+			<ee:transform doc:name="Filter testing data" doc:id="0fb04161-8c82-4011-85ef-be8fd468b2ef">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+import mergeWith from dw::core::Objects
+output application/java
+---
+[payload[0] mergeWith {
+		"SuppliedEmail" : vars.testCAse.SuppliedEmail},
+	payload[0] mergeWith {
+		"ExtId__c": vars.testCAse.ExtId__c, 
+		"SuppliedEmail" : vars.testCAse.SuppliedEmail}
+]]]></ee:set-payload>
+			</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="testCaseWday" ><![CDATA[%dw 2.0
+output application/java
+---
+payload[0]]]></ee:set-variable>
+				</ee:variables>
+		</ee:transform>
+			<flow-ref doc:name="Flow-ref to businessLogicFlow" doc:id="20701d84-a725-441d-98de-fa4dc2c417e3" name="businessLogicFlow"/>
+				<scripting:execute doc:name="Sleep for 10s until the processing is completed"
+				doc:id="d61fa0ea-2317-42c6-a8d0-5c365528c76b" engine="groovy">
+				<scripting:code>sleep(10000)</scripting:code>
+			</scripting:execute>
+			<flow-ref doc:name="testCases" doc:id="c4179a63-7a72-4c8f-92d4-315dc68fa797" name="testCases" />
+
+</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Check migrated case SuppliedName" doc:id="ebe0d750-7ae2-4dd2-ae48-c6670b79976a" expression="#[vars.testCaseWday.SuppliedName]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.migratedData.SuppliedName)]"/>
+			<munit-tools:assert-that doc:name="Check migrated case ExtId__c" doc:id="96db3c28-ff92-460e-b0ea-8a3c10473cd2" expression="#[vars.testCaseWday.ExtId__c]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.migratedData.ExtId__c)]" />
+			<munit-tools:assert-that doc:name="Check updated case SuppliedName" doc:id="a9d54cff-81ba-4e01-9081-a1bf732616ba" expression="#[vars.testCaseWday.SuppliedName]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.updatedData.SuppliedName)]" />
+		</munit:validation>
+	</munit:test>
+	<sub-flow name="testCases" doc:id="eea205d3-6f1d-46e0-a25b-ce839fbac131">
+		<salesforce:query-single doc:name="Get testCase1 in Salesforce"
+			doc:id="e3968fd4-13d4-446a-8822-e3eb71562f41" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query>SELECT Id,  SuppliedName, Subject, ExtId__c FROM Case WHERE ExtId__c =
+							':id'and SuppliedEmail = ':email'</salesforce:salesforce-query>
+			<salesforce:parameters><![CDATA[#[output application/java
+---
+{
+	"id" : vars.testCaseWday."ExtId__c",
+	"email" : vars.testCase.SuppliedEmail
+}]]]></salesforce:parameters>
+		</salesforce:query-single>
+		<set-variable value='#[payload]'
+			doc:name="Set result testCase1" doc:id="1f078c09-4c99-4184-bc57-d31e79e259dc" variableName="migratedData"/>
+		<salesforce:query-single doc:name="Get testCase2 in Salesforce" doc:id="aae5f936-719d-4baf-8716-f543bffc22fb" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query>SELECT Id,  SuppliedName, Subject FROM Case WHERE ExtId__c =
+							':id'</salesforce:salesforce-query>
+			<salesforce:parameters><![CDATA[#[output application/java
+---
+{
+	"id" : vars.testCase.ExtId__c
+}]]]></salesforce:parameters>
+		</salesforce:query-single>
+		<set-variable value="#[payload]" doc:name="Set result testCase2" doc:id="a1b1af57-e68d-4751-b7fb-67ddf08ae791" variableName="updatedData" />
+	</sub-flow>
+<munit:after-test name="test-suiteAfter_Test"
+		description="After tests actions" doc:id="02b4932d-8e6d-480b-aae8-2edae20a3bb2">
+		<salesforce:delete doc:name="Delete Cases from Salesforce"
+			doc:id="d58a87dd-6b26-4467-b513-2cc34af1da91" config-ref="Salesforce_Config">
+			<salesforce:delete-ids><![CDATA[#[[vars.updatedData.Id,vars.migratedData.Id]]]]></salesforce:delete-ids>
+		</salesforce:delete>
+	</munit:after-test>
+
+
+
+</mule>

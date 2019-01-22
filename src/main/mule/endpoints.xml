@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:workday="http://www.mulesoft.org/schema/mule/workday"
-	xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:workday="http://www.mulesoft.org/schema/mule/workday" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
-http://www.mulesoft.org/schema/mule/workday http://www.mulesoft.org/schema/mule/workday/current/mule-workday.xsd">
+http://www.mulesoft.org/schema/mule/workday http://www.mulesoft.org/schema/mule/workday/current/mule-workday.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	
 	<flow name="schedulerFlow" doc:id="aff4106d-d2f6-4366-940a-a380dcb1cf73">
 		<scheduler doc:name="Scheduler" doc:id="58b7c776-fbee-4753-9bea-f6cc3e037efd">
 			<scheduling-strategy>
@@ -15,10 +16,11 @@ http://www.mulesoft.org/schema/mule/workday http://www.mulesoft.org/schema/mule/
 					startDelay="${scheduler.start.delay}" />
 			</scheduling-strategy>
 		</scheduler>
-		<flow-ref doc:name="queryFlow" doc:id="ada07859-8839-4751-9623-68a08d31a472"
-			name="queryFlow" />
-		<logger level="INFO" doc:name="Log Objects to sync"
-			doc:id="65934ef1-2939-4fab-bde9-1886331527ea" message="#[output application/json --- payload]" />
+<flow-ref doc:name="queryFlow" doc:id="da83a21a-413f-41e6-b282-a9d93b652f0e" name="queryFlow"/>
+		<logger level="INFO" doc:name="Log Objects to sync" 
+ 			doc:id="ae72562d-2499-411d-9137-7b98ef703c97" message="#[output application/json --- payload]" />
+	
+			
 		<flow-ref name="businessLogicFlow" doc:name="businessLogicFlow"
 			doc:id="e16bf02c-b833-47de-afd5-2329ce1fab2b" />
 		<error-handler>
@@ -32,8 +34,8 @@ http://www.mulesoft.org/schema/mule/workday http://www.mulesoft.org/schema/mule/
 	</flow>
 	<flow name="queryFlow">
 		<os:retrieve key="watermark" target="lastQueryTimestamp"
-			doc:name="Retrieve lastQueryTimestamp">
-			<os:default-value><![CDATA[${watermark.default.expression}]]></os:default-value>
+			doc:name="Retrieve lastQueryTimestamp" objectStore="Object_store">
+			<os:default-value><![CDATA[#[p('watermark.default.expression')]]]></os:default-value>
 		</os:retrieve>
 		<ee:transform doc:name="Prepare Get Workers request"
 			doc:id="0e2062da-4a79-471a-bbf5-80038e92ce9b">
@@ -65,21 +67,30 @@ ns ns0 urn:com.workday/bsvc
 	]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<workday:invoke service="Human_Resources" operation="Get_Workers"
-			doc:name="Get Workers from Workday" doc:id="e0ba44f9-fbaa-4155-b81e-f3c463198536"
-			config-ref="Workday_Config" />
+		<workday:human-resources operation="Get_Workers" doc:name="Get Workers from Workday" doc:id="38fbc1ef-ec21-4921-b6dc-2a52e91f6d28" config-ref="Workday_Config_version_30" />
+		<ee:transform doc:name="Set lastQueryTimestamp variable" doc:id="c55b544e-892e-4d34-a735-6a25b3862d00" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="lastQueryTimestamp" ><![CDATA[%dw 2.0
+output application/java
+ns ns0 urn:com.workday/bsvc
+---
+payload.ns0#Get_Workers_Response.ns0#Request_Criteria.ns0#Transaction_Log_Criteria_Data.ns0#Transaction_Date_Range_Data.ns0#Updated_Through]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
 		<os:store key="watermark" failOnNullValue="false"
-			doc:name="Store lastQueryTimestamp">
-			<os:value><![CDATA[#[payload.body.Get_Workers_Response.Request_Criteria.Transaction_Log_Criteria_Data.Transaction_Date_Range_Data.Updated_Through]]]></os:value>
+			doc:name="Store lastQueryTimestamp" objectStore="Object_store">
+			<os:value><![CDATA[#[vars.lastQueryTimestamp]]]></os:value>
 		</os:store>
 		<ee:transform doc:name="Transform Workday Response"
-			doc:id="4239220e-212c-491b-89ef-dcf5cbd46dd8">
+			doc:id="0cc07ff3-dd9f-4ac3-bbc0-3c3aa33fb95f">
 			<ee:message>
 				<ee:set-payload><![CDATA[%dw 2.0
 output application/java
 ns ns0 urn:com.workday/bsvc
 ---
-(payload.body.ns0#Get_Workers_Response.ns0#Response_Data.*ns0#Worker map (worker) -> {
+(payload.ns0#Get_Workers_Response.ns0#Response_Data.*ns0#Worker map (worker) -> {
 	SuppliedName: worker.ns0#Worker_Data.ns0#Personal_Data.ns0#Name_Data.ns0#Legal_Name_Data.ns0#Name_Detail_Data.ns0#Last_Name ++
 		(worker.ns0#Worker_Data.ns0#Personal_Data.ns0#Contact_Data.ns0#Email_Address_Data.ns0#Email_Address default ""),
     SuppliedEmail: worker.ns0#Worker_Data.ns0#Personal_Data.ns0#Contact_Data.ns0#Email_Address_Data.ns0#Email_Address,
@@ -96,6 +107,7 @@ ns ns0 urn:com.workday/bsvc
 }) default []]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
+		
 
 	</flow>
 </mule>
