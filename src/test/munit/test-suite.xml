@@ -78,9 +78,9 @@ payload[0]]]></ee:set-variable>
 
 </munit:execution>
 		<munit:validation >
-			<munit-tools:assert-that doc:name="Check migrated case SuppliedName" doc:id="ebe0d750-7ae2-4dd2-ae48-c6670b79976a" expression="#[vars.testCaseWday.SuppliedName]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.migratedData.SuppliedName)]"/>
-			<munit-tools:assert-that doc:name="Check migrated case ExtId__c" doc:id="96db3c28-ff92-460e-b0ea-8a3c10473cd2" expression="#[vars.testCaseWday.ExtId__c]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.migratedData.ExtId__c)]" />
-			<munit-tools:assert-that doc:name="Check updated case SuppliedName" doc:id="a9d54cff-81ba-4e01-9081-a1bf732616ba" expression="#[vars.testCaseWday.SuppliedName]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.updatedData.SuppliedName)]" />
+			<munit-tools:assert-that doc:name="Check SuppliedName of migrated case" doc:id="ebe0d750-7ae2-4dd2-ae48-c6670b79976a" expression="#[vars.testCaseWday.SuppliedName]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.migratedData.SuppliedName)]"/>
+			<munit-tools:assert-that doc:name="Check ExtId__c of migrated case" doc:id="96db3c28-ff92-460e-b0ea-8a3c10473cd2" expression="#[vars.testCaseWday.ExtId__c]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.migratedData.ExtId__c)]" />
+			<munit-tools:assert-that doc:name="Check SuppliedName of updated case" doc:id="a9d54cff-81ba-4e01-9081-a1bf732616ba" expression="#[vars.testCaseWday.SuppliedName]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.updatedData.SuppliedName)]" />
 		</munit:validation>
 	</munit:test>
 	<sub-flow name="testCases" doc:id="eea205d3-6f1d-46e0-a25b-ce839fbac131">
