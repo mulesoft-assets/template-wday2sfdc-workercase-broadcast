@@ -70,9 +70,9 @@ payload[0]]]></ee:set-variable>
 				</ee:variables>
 		</ee:transform>
 			<flow-ref doc:name="Flow-ref to businessLogicFlow" doc:id="20701d84-a725-441d-98de-fa4dc2c417e3" name="businessLogicFlow"/>
-				<scripting:execute doc:name="Sleep for 10s until the processing is completed"
+				<scripting:execute doc:name="Sleep for 30s until the processing is completed"
 				doc:id="d61fa0ea-2317-42c6-a8d0-5c365528c76b" engine="groovy">
-				<scripting:code>sleep(10000)</scripting:code>
+				<scripting:code>sleep(30000)</scripting:code>
 			</scripting:execute>
 			<flow-ref doc:name="testCases" doc:id="c4179a63-7a72-4c8f-92d4-315dc68fa797" name="testCases" />
 
