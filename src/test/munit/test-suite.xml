@@ -5,7 +5,7 @@
 	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
 	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
-http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd 
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
 		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 		http://www.mulesoft.org/schema/mule/workday http://www.mulesoft.org/schema/mule/workday/current/mule-workday.xsd
 		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
@@ -14,7 +14,7 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
 	<munit:config name="test-suite.xml" />
 	<configuration-properties doc:name="Configuration properties" doc:id="73eb7f68-ae5b-4537-827c-d69d8f3043c9" file="mule.test.properties" />
-	
+
 	<munit:before-test name="test-suiteBefore_Test" description="Before tests actions" doc:id="e2d9ab55-3e70-474c-8e29-bb0ce5748d7f">
 		<ee:transform doc:name="Prepare dynamic testing testCase variable" doc:id="f3608439-5a25-476b-9c2a-730884facf28">
 			<ee:message>
@@ -43,9 +43,9 @@ var id = randomInt(100000) as String
 		</salesforce:create>
 		<set-variable value="#[payload.id]"
 			doc:name="Store ID to variable sfdcID" doc:id="44b4c3c6-88e9-4383-94be-a11fcf2dcac3" variableName="salesforceSourceID"/>
-	</munit:before-test>		
-		
-	
+	</munit:before-test>
+
+
 	<munit:test name="test-suiteTest" description="MUnit Test" doc:id="d9b99079-7d37-49e0-ab3e-0da59aa105db" >
 		<munit:execution>
 			<flow-ref doc:name="queryFlow" doc:id="1fceb54d-2470-4678-8209-b2f04d106d46" name="queryFlow" />
@@ -58,7 +58,7 @@ output application/java
 [payload[0] mergeWith {
 		"SuppliedEmail" : vars.testCAse.SuppliedEmail},
 	payload[0] mergeWith {
-		"ExtId__c": vars.testCAse.ExtId__c, 
+		"ExtId__c": vars.testCAse.ExtId__c,
 		"SuppliedEmail" : vars.testCAse.SuppliedEmail}
 ]]]></ee:set-payload>
 			</ee:message>
@@ -78,9 +78,9 @@ payload[0]]]></ee:set-variable>
 
 </munit:execution>
 		<munit:validation >
-			<munit-tools:assert-that doc:name="Check SuppliedName of migrated case" doc:id="ebe0d750-7ae2-4dd2-ae48-c6670b79976a" expression="#[vars.testCaseWday.SuppliedName]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.migratedData.SuppliedName)]"/>
-			<munit-tools:assert-that doc:name="Check ExtId__c of migrated case" doc:id="96db3c28-ff92-460e-b0ea-8a3c10473cd2" expression="#[vars.testCaseWday.ExtId__c]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.migratedData.ExtId__c)]" />
-			<munit-tools:assert-that doc:name="Check SuppliedName of updated case" doc:id="a9d54cff-81ba-4e01-9081-a1bf732616ba" expression="#[vars.testCaseWday.SuppliedName]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.updatedData.SuppliedName)]" />
+			<munit-tools:assert-that doc:name="Check SuppliedName of migrated case" doc:id="ebe0d750-7ae2-4dd2-ae48-c6670b79976a" expression="#[vars.testCaseWday.SuppliedName]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.migratedData.SuppliedName)]" message="Check SuppliedName of migrated case failed"/>
+			<munit-tools:assert-that doc:name="Check ExtId__c of migrated case" doc:id="96db3c28-ff92-460e-b0ea-8a3c10473cd2" expression="#[vars.testCaseWday.ExtId__c]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.migratedData.ExtId__c)]" message="Check ExtId__c of migrated case failed"/>
+			<munit-tools:assert-that doc:name="Check SuppliedName of updated case" doc:id="a9d54cff-81ba-4e01-9081-a1bf732616ba" expression="#[vars.testCaseWday.SuppliedName]" is="#[MunitTools::equalToIgnoringWhiteSpace(vars.updatedData.SuppliedName)]" message="Check SuppliedName of updated case failed"/>
 		</munit:validation>
 	</munit:test>
 	<sub-flow name="testCases" doc:id="eea205d3-6f1d-46e0-a25b-ce839fbac131">
