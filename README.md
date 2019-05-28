@@ -1,8 +1,8 @@
 
-# Anypoint Template: Workday Salesforce Worker Case Broadcast	
+# Anypoint Template: Workday Salesforce Worker Case Broadcast
 
 <!-- Header (start) -->
-As worker information is added or removed in Workday, you may need to create cases in Salesforce to use as a service management tool to manage your employees. This template allows you to broadcast (one way sync) those changes to workers in Workday and create cases in Salesforce in real time. 
+As worker information is added or removed in Workday, you may need to create cases in Salesforce to use as a service management tool to manage your employees. This template allows you to broadcast (one way sync) those changes to workers in Workday and create cases in Salesforce in real time.
 
 The detection criteria, and fields to move are configurable. Additional systems can easily added to be notified of changes. Real time synchronization is achieved via rapid polling of Workday or can be extended to include outbound notifications. This template leverages watermarking functionality to ensure that only the most recent items are synchronized and batch to efficiently process many records at a time.
 
@@ -11,12 +11,12 @@ The detection criteria, and fields to move are configurable. Additional systems 
 <!-- Header (end) -->
 
 # License Agreement
-This template is subject to the conditions of the <a href="https://s3.amazonaws.com/templates-examples/AnypointTemplateLicense.pdf">MuleSoft License Agreement</a>. Review the terms of the license before downloading and using this template. You can use this template for free with the Mule Enterprise Edition, CloudHub, or as a trial in Anypoint Studio. 
+This template is subject to the conditions of the <a href="https://s3.amazonaws.com/templates-examples/AnypointTemplateLicense.pdf">MuleSoft License Agreement</a>. Review the terms of the license before downloading and using this template. You can use this template for free with the Mule Enterprise Edition, CloudHub, or as a trial in Anypoint Studio.
 # Use Case
 <!-- Use Case (start) -->
 As a Workday admin I want to broadcast Workers to Salesforce Case instances.
 
-This Anypoint template serves as a foundation for the process of broadcasting Worker from Workday instance to Salesforce, being able to specify filtering criteria and desired behavior when a case already exists in the destination system. 
+This Anypoint template serves as a foundation for the process of broadcasting Worker from Workday instance to Salesforce, being able to specify filtering criteria and desired behavior when a case already exists in the destination system.
 
 As implemented, this template leverages the Mule batch module. The batch job is divided Process and On Complete stages.
 Firstly the template queries Workday for all the existing active workers that match the filter criteria. The criteria is based on manipulations within the given date range. The last step of the Process stage groups the cases and create them in Salesforce. Finally during the On Complete stage the template outputs statistics data into the console.
@@ -91,7 +91,7 @@ After you import your template into Anypoint Studio, follow these steps to run i
 <!-- Running on Studio (end) -->
 
 ### Running on Mule Standalone
-Update the properties in one of the property files, for example in mule.prod.properties, and run your app with a corresponding environment variable. In this example, use `mule.env=prod`. 
+Update the properties in one of the property files, for example in mule.prod.properties, and run your app with a corresponding environment variable. In this example, use `mule.env=prod`.
 
 ## Running on CloudHub
 When creating your application in CloudHub, go to Runtime Manager > Manage Application > Properties to set the environment variables listed in "Properties to Configure" as well as the mule.env value.
@@ -121,6 +121,7 @@ To use this template, configure properties such as credentials, configurations, 
 - wday.tenant `acme_pt1`
 - wday.password `joanPass123`
 - wday.host `your_impl-cc.workday.com`
+- wday.responseTimeout `25000`
 
 #### Salesforce Connector
 
@@ -135,8 +136,8 @@ To use this template, configure properties such as credentials, configurations, 
 <!-- API Calls (start) -->
 Salesforce imposes limits on the number of API Calls that can be made. Therefore calculating this amount may be an important factor to consider. The template calls to the API can be calculated using the formula:
 
-- ***1 + X + X / 200*** -- Where ***X*** is the number of users to synchronize on each run. 
-- Divide by ***200*** because by default, users are gathered in groups of 200 for each upsert API call in the commit step. Also consider that this calls are executed repeatedly every polling cycle.	
+- ***1 + X + X / 200*** -- Where ***X*** is the number of users to synchronize on each run.
+- Divide by ***200*** because by default, users are gathered in groups of 200 for each upsert API call in the commit step. Also consider that this calls are executed repeatedly every polling cycle.
 
 For instance if 10 records are fetched from origin instance, then 12 API calls are made (1 + 10 + 1).
 <!-- API Calls (end) -->
