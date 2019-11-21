@@ -4,13 +4,13 @@
     <parent>
         <groupId>org.mule.templates</groupId>
         <artifactId>templates-tooling-parent-pom</artifactId>
-        <version>2.1.17</version>
+        <version>2.1.24</version>
     </parent>
     <artifactId>template-wday2sfdc-workercase-broadcast</artifactId>
     <packaging>mule-application</packaging>
     <version>2.1.1-SNAPSHOT</version>
     <name>template-wday2sfdc-workercase-broadcast</name>
-    
+
     <build>
         <plugins>
             <plugin>
@@ -22,7 +22,7 @@
                     <classifier>mule-application-template</classifier>
                 </configuration>
             </plugin>
-             <plugin>
+            <plugin>
                 <groupId>com.mulesoft.munit.tools</groupId>
                 <artifactId>munit-maven-plugin</artifactId>
                 <version>${munit.version}</version>
@@ -68,13 +68,14 @@
             <artifactId>munit-runner</artifactId>
             <classifier>mule-plugin</classifier>
             <scope>test</scope>
-        </dependency>	<dependency>
+        </dependency>
+        <dependency>
             <groupId>com.mulesoft.munit</groupId>
             <artifactId>munit-tools</artifactId>
             <classifier>mule-plugin</classifier>
             <scope>test</scope>
         </dependency>
-    	<dependency>
+        <dependency>
             <groupId>org.mule.modules</groupId>
             <artifactId>mule-scripting-module</artifactId>
             <classifier>mule-plugin</classifier>

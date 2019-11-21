@@ -67,7 +67,7 @@ ns ns0 urn:com.workday/bsvc
 	]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<workday:human-resources operation="Get_Workers" doc:name="Get Workers from Workday" doc:id="38fbc1ef-ec21-4921-b6dc-2a52e91f6d28" config-ref="Workday_Config_version_30" />
+		<workday:human-resources operation="Get_Workers" doc:name="Get Workers from Workday" doc:id="38fbc1ef-ec21-4921-b6dc-2a52e91f6d28" config-ref="Workday_Config" />
 		<ee:transform doc:name="Set lastQueryTimestamp variable" doc:id="c55b544e-892e-4d34-a735-6a25b3862d00" >
 			<ee:message >
 			</ee:message>
